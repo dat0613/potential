@@ -79,14 +79,18 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)..\Release\$(ProjectName)\</OutDir>
-    <IntDir>$(SolutionDir)..\temp\$(ProjectName)\</IntDir>
+    <IntDir>$(SolutionDir)..\temp\$(ProjectName)\$(Configuration)</IntDir>
     <TargetName>$(ProjectName)_$(Configuration)_$(LibrariesArchitecture)</TargetName>
+    <ExternalIncludePath>$(SolutionDir)\..\..\vcpkg\installed\$(Platform)-$(SDKIdentifier)\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <LibraryPath>$(SolutionDir)\..\..\vcpkg\installed\$(Platform)-$(SDKIdentifier)\debug\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)..\Release\$(ProjectName)\</OutDir>
-    <IntDir>$(SolutionDir)..\temp\$(ProjectName)\</IntDir>
+    <IntDir>$(SolutionDir)..\temp\$(ProjectName)\$(Configuration)</IntDir>
     <TargetName>$(ProjectName)_$(Configuration)_$(LibrariesArchitecture)</TargetName>
+    <ExternalIncludePath>$(SolutionDir)\..\..\vcpkg\installed\$(Platform)-$(SDKIdentifier)\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <LibraryPath>$(SolutionDir)\..\..\vcpkg\installed\$(Platform)-$(SDKIdentifier)\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
