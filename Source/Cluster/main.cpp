@@ -16,29 +16,77 @@ constexpr int Width = 800;
 constexpr int Height = 800;
 constexpr int FramerateLimit = 60;
 
+class EventEntity
+{
+public:
+
+};
+
+class EventComponent : public Cluster::Component<EventEntity>
+{
+    void Update(int index, float deltaTime) override
+    {
+
+    }
+};
+
+class GameObjectEntity
+{
+public:
+    Vector3 position;
+};
+
+class GameObjectComponent : public Cluster::Component<GameObjectEntity>
+{
+    //GameObjectComponent(Cluster& cluster) : Cluster::Component<GameObjectEntity>(cluster) {}
+
+    void Update(int index, float deltaTime) override
+    {
+        entities[index].position.x++;
+    }
+};
+
+class TestEntity
+{
+public:
+
+};
+
+class TestComponent : public Cluster::Component<TestEntity>
+{
+public:
+    void Update(int index, float deltaTime) override
+    {
+
+    }
+};
+
 int main()
 {
     Cluster cluster(4);
 
-    sf::RenderWindow window(sf::VideoMode(Width, Height), "Cluster", sf::Style::Close);
-    window.setFramerateLimit(FramerateLimit);
+    cluster.AddComponent<GameObjectComponent>();
+    
 
-    while (window.isOpen())
-    {
-        sf::Event e;
-        while (window.pollEvent(e))
-        {
-            if (e.type == sf::Event::Closed)
-                window.close();
-        }
+    //sf::RenderWindow window(sf::VideoMode(Width, Height), "Cluster", sf::Style::Close);
+    //window.setFramerateLimit(FramerateLimit);
 
-        cluster.Update();
+    //while (window.isOpen())
+    //{
+    //    sf::Event e;
+    //    while (window.pollEvent(e))
+    //    {
+    //        if (e.type == sf::Event::Closed)
+    //            window.close();
+    //    }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    //    cluster.Update();
 
-        window.clear(sf::Color::Black);
-        window.display();
-    }
+    //    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    //    window.clear(sf::Color::Black);
+    //    window.display();
+    //}
 
     return 0;
 }

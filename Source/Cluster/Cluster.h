@@ -9,7 +9,7 @@
 
 class Cluster
 {
-private:
+public:
 
 	// IComponent 인터페이스를 상속받는 컴포넌트들 중 같은 종류들은 모두 배열로 관리
 	// 객체가 데이터를 갖는것이 아닌, 선형적인 데이터들과 함수들로 객체를 추상화
@@ -18,11 +18,24 @@ private:
 	// event로 전달한 값은 다음번 Update루프의 맨 처음에 적용됨
 	// 기존 OOP방식의 Update에서도 다른 객체의 컴포넌트의 값을 변경 했을 때 
 	// 이미 변경되는 객체의 Update가 끝난 후 라면 다음 루프에 변경된 값으로 Update가 돌기 때문에 문제는 없을듯
+
 	class IComponent
 	{
-	public:
-		virtual void Update(float deltaTime) = 0;
+		virtual void Update(int index, float deltaTime) = 0;
 	};
+
+	template <class Entity>
+	class Component : public IComponent
+	{
+	private:
+		//Cluster& cluster;
+
+	public:
+		//Component(Cluster& cluster) : cluster(cluster) {}
+		std::vector<Entity> entities;
+	};
+private:
+
 
 	class Node : public std::enable_shared_from_this<Node>
 	{
@@ -72,7 +85,17 @@ public:
 		);
 	}
 
+	template <class T>
+	bool AddComponent()
+	{
+		auto component = std::make_shared<T>();
+		components.push_back(component);
+
+		return true;
+	}
+
 private:
+
 	bool AddNode(int identity)
 	{
 		if (nodeMap.find(identity) != nodeMap.end())
@@ -97,6 +120,7 @@ private:
 private:
 	std::vector<std::shared_ptr<Node>> nodes;// 빠른 순회를 위한 vector
 	std::map<int, std::shared_ptr<Node>> nodeMap;// 빠른 검색을 위한 map
+	std::vector<std::shared_ptr<IComponent>> components;
 	int nodeCount;
 	int nodeIdentityGenerator;
 };
