@@ -1,13 +1,15 @@
 ﻿#pragma once
 
 #include <memory>
+#include <vector>
 #include <list>
-#include <future>
-#include <iostream>
 #include <ppl.h>
-#include "GameObject.h"
+#include <cassert>
+#include <typeindex>
+#include <typeinfo>
+#include <unordered_map>
 
-class Cluster
+class Cluster : public std::enable_shared_from_this<Cluster>
 {
 public:
 
@@ -21,26 +23,30 @@ public:
 
 	class IComponent
 	{
+	public:
 		virtual void Update(int index, float deltaTime) = 0;
 	};
-
-	template <class Entity>
-	class Component : public IComponent
-	{
-	private:
-		//Cluster& cluster;
-
-	public:
-		//Component(Cluster& cluster) : cluster(cluster) {}
-		std::vector<Entity> entities;
-	};
-private:
-
 
 	class Node : public std::enable_shared_from_this<Node>
 	{
 	public:
-		Node(int identity) : identity(identity)
+		template <class Entity>
+		class Component : public IComponent
+		{
+		public:
+			Component() : node(nullptr) {}
+			Entity& GetEntity(int index) { return entities[index]; }
+			const Entity& GetEntityOfOtherIndex(int index) { return entities[index]; }// 주의 : 다른 인덱스 번호의 Entity를 읽어 올때는 const로만 읽어야 함.
+
+			template <class T>
+			std::weak_ptr<T> GetComponent() { return node->GetComponent<T>(); }
+		private:
+			std::shared_ptr<Node> node;
+			std::vector<Entity> entities;
+		};
+	public:
+
+		Node() : cluster(nullptr)
 		{
 
 		}
@@ -50,77 +56,100 @@ private:
 
 		}
 
-		void Update()
+		void Update(float deltaTime)
 		{
+			int division = 6;// 임시 변수
+			int remainder = 3;
+			for (auto& component : components)
+			{
+				concurrency::parallel_for(0, division, [deltaTime, division, remainder, &component](int threadNumber)
+				{
+					int startCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber     : remainder) : 0;
+					int endCorrection =   remainder != 0 ? (remainder > threadNumber ? threadNumber + 1 : remainder) : 0;
 
+					for (int i = threadNumber * division + startCorrection; i < (threadNumber + 1) * division + endCorrection; i++)
+					{
+						component->Update(i, deltaTime);
+					}
+				});
+			}
 		}
 
-		int GetIdentity() { return identity; }
+		std::shared_ptr<Cluster>& GetCluster()
+		{
+			return cluster;
+		}
+
+		void SetCluster(const std::shared_ptr<Cluster>& cluster)
+		{
+			assert(cluster != nullptr);
+			this->cluster = cluster;
+		}
+
+		template <class T>
+		void AddComponent()
+		{
+			static_assert(std::is_base_of<IComponent, T>::value, "Component class must be derived IComponent interface");
+			auto typeIndex = std::type_index(typeid(T));
+			assert(componentMap.find(typeIndex) == componentMap.end());
+
+			int vectorIndex = components.size();
+			auto component = std::make_shared<T>();
+			components.push_back(component);
+			componentMap.insert(std::make_pair(typeIndex, vectorIndex));
+			return;
+		}
+
+		template <class T>
+		std::weak_ptr<T> GetComponent()
+		{
+			static_assert(std::is_base_of<IComponent, T>::value, "Component class must be derived IComponent interface");
+			auto typeIndex = std::type_index(typeid(T));
+			auto pair = componentMap.find(typeIndex);
+			if (pair == componentMap.end())
+				return std::weak_ptr<T>();
+
+			return std::static_pointer_cast<T>(components[pair->second]);
+		};
 
 	private:
-		int identity;
+		std::shared_ptr<Cluster> cluster;
+		std::vector<std::shared_ptr<IComponent>> components;
+		std::unordered_map<std::type_index, int> componentMap; //type_index, components 벡터에 저장된 인덱스 번호
 	};
 
+private:
+
 public:
-	Cluster(int nodeCount) : nodeCount(nodeCount), nodeIdentityGenerator(0)
-	{
-		for (int i = 0; i < nodeCount; i++)
-		{
-			AddNode(nodeIdentityGenerator++);
-		}
-	}
+	Cluster() {}
 
 	~Cluster()
 	{
 		PopAllNode();
 	}
 
-	void Update()
+	void Update(float deltaTime)
 	{
-		concurrency::parallel_for
-		(0, nodeCount, [this](int index)
-			{
-				nodes[index]->Update();
-			}
-		);
-	}
-
-	template <class T>
-	bool AddComponent()
-	{
-		auto component = std::make_shared<T>();
-		components.push_back(component);
-
-		return true;
-	}
-
-private:
-
-	bool AddNode(int identity)
-	{
-		if (nodeMap.find(identity) != nodeMap.end())
-			return false;
-
-		auto node = std::make_shared<Node>(identity);
-		nodes.push_back(node);
-		nodeMap.insert(std::make_pair(identity, node));
-	}
-
-	void PopAllNode()
-	{
-		for (int i = 0; i < nodeCount; i++)
+		for (auto& node : nodes)
 		{
-			auto& node = nodes.back();
-			auto identity = node->GetIdentity();
-			nodeMap.erase(identity);
-			nodes.pop_back();
+			node->Update(deltaTime);
 		}
 	}
 
+	void AddNode(std::shared_ptr<Node>& node)
+	{
+		assert(node->GetCluster() == nullptr);
+		node->SetCluster(shared_from_this());
+		nodes.push_back(node);
+	}
+
 private:
-	std::vector<std::shared_ptr<Node>> nodes;// 빠른 순회를 위한 vector
-	std::map<int, std::shared_ptr<Node>> nodeMap;// 빠른 검색을 위한 map
-	std::vector<std::shared_ptr<IComponent>> components;
-	int nodeCount;
-	int nodeIdentityGenerator;
+
+	void PopAllNode()
+	{
+		nodes.clear();
+	}
+
+private:
+	std::vector<std::shared_ptr<Node>> nodes;
 };

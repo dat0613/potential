@@ -1,6 +1,7 @@
 ﻿#include <iostream>
 #include <SFML/Graphics.hpp>
 #include "Cluster.h"
+#include <thread>
 
 #if defined (_DEBUG)
 #pragma comment (lib, "sfml-window-d.lib")
@@ -16,13 +17,15 @@ constexpr int Width = 800;
 constexpr int Height = 800;
 constexpr int FramerateLimit = 60;
 
+using Vector3 = sf::Vector3<float>;
+
 class EventEntity
 {
 public:
 
 };
 
-class EventComponent : public Cluster::Component<EventEntity>
+class EventComponent : public Cluster::Node::Component<EventEntity>
 {
     void Update(int index, float deltaTime) override
     {
@@ -36,13 +39,15 @@ public:
     Vector3 position;
 };
 
-class GameObjectComponent : public Cluster::Component<GameObjectEntity>
+class GameObjectComponent : public Cluster::Node::Component<GameObjectEntity>
 {
-    //GameObjectComponent(Cluster& cluster) : Cluster::Component<GameObjectEntity>(cluster) {}
-
     void Update(int index, float deltaTime) override
     {
-        entities[index].position.x++;
+        if (auto eventComponent = GetComponent<EventComponent>().lock())
+        {
+            eventComponent->GetEntity(index);
+        }
+        GetEntity(index).position.x++;
     }
 };
 
@@ -52,7 +57,7 @@ public:
 
 };
 
-class TestComponent : public Cluster::Component<TestEntity>
+class TestComponent : public Cluster::Node::Component<TestEntity>
 {
 public:
     void Update(int index, float deltaTime) override
@@ -63,10 +68,18 @@ public:
 
 int main()
 {
-    Cluster cluster(4);
+    auto node = std::make_shared<Cluster::Node>();
+    node->AddComponent<EventComponent>();
+    node->AddComponent<GameObjectComponent>();
 
-    cluster.AddComponent<GameObjectComponent>();
-    
+    auto cluster = std::make_shared<Cluster>();
+    cluster->AddNode(node);
+
+    for (;;)
+    {
+        cluster->Update(1.0f);// 나중에 수정
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000/60));
+    }
 
     //sf::RenderWindow window(sf::VideoMode(Width, Height), "Cluster", sf::Style::Close);
     //window.setFramerateLimit(FramerateLimit);
