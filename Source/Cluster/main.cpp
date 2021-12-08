@@ -75,10 +75,14 @@ int main()
     auto cluster = std::make_shared<Cluster>();
     cluster->AddNode(node);
 
+    std::chrono::system_clock::time_point updateTime = std::chrono::system_clock::now();
+
     for (;;)
     {
-        cluster->Update(1.0f);// 나중에 수정
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000/60));
+        auto deltaTime = std::chrono::duration<float>(std::chrono::system_clock::now() - updateTime).count();
+        updateTime = std::chrono::system_clock::now();
+        cluster->Update(deltaTime);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     //sf::RenderWindow window(sf::VideoMode(Width, Height), "Cluster", sf::Style::Close);

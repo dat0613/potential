@@ -12,6 +12,7 @@
 class Cluster : public std::enable_shared_from_this<Cluster>
 {
 public:
+	static constexpr int ParallelScale = 6;
 
 	// IComponent 인터페이스를 상속받는 컴포넌트들 중 같은 종류들은 모두 배열로 관리
 	// 객체가 데이터를 갖는것이 아닌, 선형적인 데이터들과 함수들로 객체를 추상화
@@ -21,10 +22,14 @@ public:
 	// 기존 OOP방식의 Update에서도 다른 객체의 컴포넌트의 값을 변경 했을 때 
 	// 이미 변경되는 객체의 Update가 끝난 후 라면 다음 루프에 변경된 값으로 Update가 돌기 때문에 문제는 없을듯
 
+	class Node;
+
 	class IComponent
 	{
 	public:
 		virtual void Update(int index, float deltaTime) = 0;
+		virtual void SetNode(const std::weak_ptr<Node>& node) {}
+		virtual int GetNumberOfEntities() const { return 0; }
 	};
 
 	class Node : public std::enable_shared_from_this<Node>
@@ -34,14 +39,16 @@ public:
 		class Component : public IComponent
 		{
 		public:
-			Component() : node(nullptr) {}
 			Entity& GetEntity(int index) { return entities[index]; }
 			const Entity& GetEntityOfOtherIndex(int index) { return entities[index]; }// 주의 : 다른 인덱스 번호의 Entity를 읽어 올때는 const로만 읽어야 함.
 
 			template <class T>
-			std::weak_ptr<T> GetComponent() { return node->GetComponent<T>(); }
+			std::weak_ptr<T> GetComponent() { return node.lock()->GetComponent<T>(); }// Component는 부모 Node의 컨테이너에 shared_ptr로 잡혀있기 때문에, 자신이 살아있다면 Node는 무조건 살아있음.
+			void SetNode(const std::weak_ptr<Node>& node) override { this->node = node; };// 부모 Node와 상호 참조를 예방하기 위해 weak_ptr사용
+			int GetNumberOfEntities() const override { return entities.size(); };
+
 		private:
-			std::shared_ptr<Node> node;
+			std::weak_ptr<Node> node;
 			std::vector<Entity> entities;
 		};
 	public:
@@ -58,11 +65,16 @@ public:
 
 		void Update(float deltaTime)
 		{
-			int division = 6;// 임시 변수
-			int remainder = 3;
 			for (auto& component : components)
 			{
-				concurrency::parallel_for(0, division, [deltaTime, division, remainder, &component](int threadNumber)
+				int entityCount = component->GetNumberOfEntities();
+				if (entityCount == 0)
+					continue;
+
+				int division = entityCount / ParallelScale;
+				int remainder = entityCount % ParallelScale;
+
+				concurrency::parallel_for(0, ParallelScale, [deltaTime, division, remainder, &component](int threadNumber)
 				{
 					int startCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber     : remainder) : 0;
 					int endCorrection =   remainder != 0 ? (remainder > threadNumber ? threadNumber + 1 : remainder) : 0;
@@ -90,11 +102,13 @@ public:
 		void AddComponent()
 		{
 			static_assert(std::is_base_of<IComponent, T>::value, "Component class must be derived IComponent interface");
+
 			auto typeIndex = std::type_index(typeid(T));
 			assert(componentMap.find(typeIndex) == componentMap.end());
 
 			int vectorIndex = components.size();
 			auto component = std::make_shared<T>();
+			component->SetNode(weak_from_this());
 			components.push_back(component);
 			componentMap.insert(std::make_pair(typeIndex, vectorIndex));
 			return;
@@ -104,6 +118,7 @@ public:
 		std::weak_ptr<T> GetComponent()
 		{
 			static_assert(std::is_base_of<IComponent, T>::value, "Component class must be derived IComponent interface");
+
 			auto typeIndex = std::type_index(typeid(T));
 			auto pair = componentMap.find(typeIndex);
 			if (pair == componentMap.end())
