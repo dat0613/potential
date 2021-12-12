@@ -9,6 +9,8 @@
 #include <typeinfo>
 #include <unordered_map>
 
+#include <SFML/Graphics.hpp>
+
 class Cluster : public std::enable_shared_from_this<Cluster>
 {
 public:
@@ -28,8 +30,16 @@ public:
 	{
 	public:
 		virtual void Update(int index, float deltaTime) = 0;
+		virtual void Draw(int index, sf::RenderWindow& window) {}
 		virtual void SetNode(const std::weak_ptr<Node>& node) {}
 		virtual int GetNumberOfEntities() const { return 0; }
+		virtual bool IsActive(int index) const { return false; }
+	};
+
+	class BaseEntity
+	{
+	public:
+		bool isActive;
 	};
 
 	class Node : public std::enable_shared_from_this<Node>
@@ -39,6 +49,7 @@ public:
 		class Component : public IComponent
 		{
 		public:
+			static_assert(std::is_base_of<BaseEntity, Entity>::value, "Entity class must be derived BaseEntity class");
 			Entity& GetEntity(int index) { return entities[index]; }
 			const Entity& GetEntityOfOtherIndex(int index) { return entities[index]; }// 주의 : 다른 인덱스 번호의 Entity를 읽어 올때는 const로만 읽어야 함.
 
@@ -46,6 +57,7 @@ public:
 			std::weak_ptr<T> GetComponent() { return node.lock()->GetComponent<T>(); }// Component는 부모 Node의 컨테이너에 shared_ptr로 잡혀있기 때문에, 자신이 살아있다면 Node는 무조건 살아있음.
 			void SetNode(const std::weak_ptr<Node>& node) override { this->node = node; };// 부모 Node와 상호 참조를 예방하기 위해 weak_ptr사용
 			int GetNumberOfEntities() const override { return entities.size(); };
+			virtual bool IsActive(int index) const { return entities[index].isActive; }
 
 		private:
 			std::weak_ptr<Node> node;
@@ -77,13 +89,32 @@ public:
 				concurrency::parallel_for(0, ParallelScale, [deltaTime, division, remainder, &component](int threadNumber)
 				{
 					int startCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber     : remainder) : 0;
-					int endCorrection =   remainder != 0 ? (remainder > threadNumber ? threadNumber + 1 : remainder) : 0;
+					int endCorrection   = remainder != 0 ? (remainder > threadNumber ? threadNumber + 1 : remainder) : 0;
 
 					for (int i = threadNumber * division + startCorrection; i < (threadNumber + 1) * division + endCorrection; i++)
 					{
+						if (!component->IsActive(i))
+							continue;
+
 						component->Update(i, deltaTime);
 					}
 				});
+			}
+		}
+
+		void Draw(sf::RenderWindow& window)
+		{
+			for (auto& component : components)
+			{
+				int entityCount = component->GetNumberOfEntities();
+
+				for (int i = 0; i < entityCount; i++)
+				{
+					if (!component->IsActive(i))
+						continue;
+
+					component->Draw(i, window);
+				}
 			}
 		}
 
@@ -148,6 +179,14 @@ public:
 		for (auto& node : nodes)
 		{
 			node->Update(deltaTime);
+		}
+	}
+
+	void Draw(sf::RenderWindow& window)
+	{
+		for (auto& node : nodes)
+		{
+			node->Draw(window);
 		}
 	}
 

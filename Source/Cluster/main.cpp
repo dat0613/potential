@@ -18,8 +18,9 @@ constexpr int Height = 800;
 constexpr int FramerateLimit = 60;
 
 using Vector3 = sf::Vector3<float>;
+using Vector2 = sf::Vector2<float>;
 
-class EventEntity
+class EventEntity : public Cluster::BaseEntity
 {
 public:
 
@@ -33,10 +34,11 @@ class EventComponent : public Cluster::Node::Component<EventEntity>
     }
 };
 
-class GameObjectEntity
+class GameObjectEntity : public Cluster::BaseEntity
 {
 public:
     Vector3 position;
+    float radius;
 };
 
 class GameObjectComponent : public Cluster::Node::Component<GameObjectEntity>
@@ -45,13 +47,21 @@ class GameObjectComponent : public Cluster::Node::Component<GameObjectEntity>
     {
         if (auto eventComponent = GetComponent<EventComponent>().lock())
         {
-            eventComponent->GetEntity(index);
+            auto& entity = eventComponent->GetEntity(index);
         }
         GetEntity(index).position.x++;
     }
+
+    void Draw(int index, sf::RenderWindow& window) override
+    {
+        const auto& entity = GetEntity(index);
+        sf::CircleShape shape(entity.radius);
+        shape.setFillColor(sf::Color::Cyan);
+        shape.setPosition(entity.position.x - entity.radius, entity.position.y - entity.radius);
+    }
 };
 
-class TestEntity
+class TestEntity : public Cluster::BaseEntity
 {
 public:
 
@@ -75,35 +85,33 @@ int main()
     auto cluster = std::make_shared<Cluster>();
     cluster->AddNode(node);
 
+    sf::View view(sf::FloatRect(Width * -0.5f, -Height * -0.5f, Width, Height));
+
+    sf::RenderWindow window(sf::VideoMode(Width, Height), "Cluster", sf::Style::Close);
+    window.setFramerateLimit(FramerateLimit);
+    window.setView(view);
+
     std::chrono::system_clock::time_point updateTime = std::chrono::system_clock::now();
 
-    for (;;)
+    while (window.isOpen())
     {
+        sf::Event e;
+        while (window.pollEvent(e))
+        {
+            if (e.type == sf::Event::Closed)
+                window.close();
+        }
+
         auto deltaTime = std::chrono::duration<float>(std::chrono::system_clock::now() - updateTime).count();
         updateTime = std::chrono::system_clock::now();
         cluster->Update(deltaTime);
+
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+        window.clear(sf::Color::Black);
+        cluster->Draw(window);// Draw는 일단 싱글 스레드
+        window.display();
     }
-
-    //sf::RenderWindow window(sf::VideoMode(Width, Height), "Cluster", sf::Style::Close);
-    //window.setFramerateLimit(FramerateLimit);
-
-    //while (window.isOpen())
-    //{
-    //    sf::Event e;
-    //    while (window.pollEvent(e))
-    //    {
-    //        if (e.type == sf::Event::Closed)
-    //            window.close();
-    //    }
-
-    //    cluster.Update();
-
-    //    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-    //    window.clear(sf::Color::Black);
-    //    window.display();
-    //}
 
     return 0;
 }
