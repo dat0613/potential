@@ -20,57 +20,49 @@ constexpr int FramerateLimit = 60;
 using Vector3 = sf::Vector3<float>;
 using Vector2 = sf::Vector2<float>;
 
-class EventEntity : public Cluster::BaseEntity
+class EventComponent : public Cluster::Node::Component
 {
 public:
+    void Update(float deltaTime) override
+    {
 
-};
+    }
 
-class EventComponent : public Cluster::Node::Component<EventEntity>
-{
-    void Update(int index, float deltaTime) override
+    void DoSomeThing()
     {
 
     }
 };
 
-class GameObjectEntity : public Cluster::BaseEntity
+class GameObjectComponent : public Cluster::Node::Component
 {
 public:
+    void Update(float deltaTime) override
+    {
+        auto [isSuccess, eventComponent] = GetComponent<EventComponent>();
+        if (isSuccess)
+        {
+            eventComponent.DoSomeThing();
+        }
+        position.x++;
+    }
+
+    void Draw(sf::RenderWindow& window) override
+    {
+        sf::CircleShape shape(radius);
+        shape.setFillColor(sf::Color::Cyan);
+        shape.setPosition(position.x - radius, position.y - radius);
+    }
+
+private:
     Vector3 position;
     float radius;
 };
 
-class GameObjectComponent : public Cluster::Node::Component<GameObjectEntity>
-{
-    void Update(int index, float deltaTime) override
-    {
-        if (auto eventComponent = GetComponent<EventComponent>().lock())
-        {
-            auto& entity = eventComponent->GetEntity(index);
-        }
-        GetEntity(index).position.x++;
-    }
-
-    void Draw(int index, sf::RenderWindow& window) override
-    {
-        const auto& entity = GetEntity(index);
-        sf::CircleShape shape(entity.radius);
-        shape.setFillColor(sf::Color::Cyan);
-        shape.setPosition(entity.position.x - entity.radius, entity.position.y - entity.radius);
-    }
-};
-
-class TestEntity : public Cluster::BaseEntity
+class TestComponent : public Cluster::Node::Component
 {
 public:
-
-};
-
-class TestComponent : public Cluster::Node::Component<TestEntity>
-{
-public:
-    void Update(int index, float deltaTime) override
+    void Update(float deltaTime) override
     {
 
     }

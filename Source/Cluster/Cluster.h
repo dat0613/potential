@@ -29,39 +29,36 @@ public:
 	class IComponent
 	{
 	public:
-		virtual void Update(int index, float deltaTime) = 0;
-		virtual void Draw(int index, sf::RenderWindow& window) {}
+		virtual void Update(float deltaTime) = 0;
+		virtual void Draw(sf::RenderWindow& window) {}
 		virtual void SetNode(const std::weak_ptr<Node>& node) {}
-		virtual int GetNumberOfEntities() const { return 0; }
-		virtual bool IsActive(int index) const { return false; }
-	};
-
-	class BaseEntity
-	{
-	public:
-		bool isActive;
+		virtual void SetIndex(int index) {}
+		virtual int GetIndex() const { return -1; }
+		virtual bool IsActive() const { return false; }
 	};
 
 	class Node : public std::enable_shared_from_this<Node>
 	{
 	public:
-		template <class Entity>
+		
 		class Component : public IComponent
 		{
 		public:
-			static_assert(std::is_base_of<BaseEntity, Entity>::value, "Entity class must be derived BaseEntity class");
-			Entity& GetEntity(int index) { return entities[index]; }
-			const Entity& GetEntityOfOtherIndex(int index) { return entities[index]; }// 주의 : 다른 인덱스 번호의 Entity를 읽어 올때는 const로만 읽어야 함.
+			Component() : isActive(false), index(-1) {}
 
 			template <class T>
-			std::weak_ptr<T> GetComponent() { return node.lock()->GetComponent<T>(); }// Component는 부모 Node의 컨테이너에 shared_ptr로 잡혀있기 때문에, 자신이 살아있다면 Node는 무조건 살아있음.
+			std::tuple<bool, T&> GetComponent() { return node.lock()->GetComponent<T>(GetIndex()); }// Component는 부모 Node의 컨테이너에 shared_ptr로 잡혀있기 때문에, 자신이 살아있다면 Node는 무조건 살아있음.
+			template <class T>
+			std::tuple<bool, const T&> GetOtherComponent(int index) { return node.lock()->GetComponent<T>(GetIndex()); }// Component는 부모 Node의 컨테이너에 shared_ptr로 잡혀있기 때문에, 자신이 살아있다면 Node는 무조건 살아있음.
 			void SetNode(const std::weak_ptr<Node>& node) override { this->node = node; };// 부모 Node와 상호 참조를 예방하기 위해 weak_ptr사용
-			int GetNumberOfEntities() const override { return entities.size(); };
-			virtual bool IsActive(int index) const { return entities[index].isActive; }
+			void SetIndex(int index) override { this->index = index; }
+			int GetIndex() const override { return index; }
+			bool IsActive() const override { return isActive; }
 
 		private:
 			std::weak_ptr<Node> node;
-			std::vector<Entity> entities;
+			bool isActive;
+			int index;
 		};
 	public:
 
@@ -79,7 +76,7 @@ public:
 		{
 			for (auto& component : components)
 			{
-				int entityCount = component->GetNumberOfEntities();
+				int entityCount = component.size();
 				if (entityCount == 0)
 					continue;
 
@@ -93,10 +90,10 @@ public:
 
 					for (int i = threadNumber * division + startCorrection; i < (threadNumber + 1) * division + endCorrection; i++)
 					{
-						if (!component->IsActive(i))
+						if (!component[i].IsActive())
 							continue;
 
-						component->Update(i, deltaTime);
+						component[i].Update(deltaTime);
 					}
 				});
 			}
@@ -106,14 +103,14 @@ public:
 		{
 			for (auto& component : components)
 			{
-				int entityCount = component->GetNumberOfEntities();
+				int entityCount = component.size();
 
 				for (int i = 0; i < entityCount; i++)
 				{
-					if (!component->IsActive(i))
+					if (!component[i].IsActive())
 						continue;
 
-					component->Draw(i, window);
+					component[i].Draw(window);
 				}
 			}
 		}
@@ -138,29 +135,35 @@ public:
 			assert(componentMap.find(typeIndex) == componentMap.end());
 
 			int vectorIndex = components.size();
-			auto component = std::make_shared<T>();
-			component->SetNode(weak_from_this());
-			components.push_back(component);
+			std::vector<T> entities;
+			//components.push_back(entities);
 			componentMap.insert(std::make_pair(typeIndex, vectorIndex));
 			return;
 		}
 
 		template <class T>
-		std::weak_ptr<T> GetComponent()
+		std::tuple<bool, T&> GetComponent(int index)
 		{
 			static_assert(std::is_base_of<IComponent, T>::value, "Component class must be derived IComponent interface");
 
+			auto retval = false;
 			auto typeIndex = std::type_index(typeid(T));
 			auto pair = componentMap.find(typeIndex);
 			if (pair == componentMap.end())
-				return std::weak_ptr<T>();
+				retval = false;
+			else
+				// index 범위 검사 필요
+				retval = components[pair->second][index].IsActive();
 
-			return std::static_pointer_cast<T>(components[pair->second]);
+			if (retval)
+				return std::tuple<bool, T&>(true, static_cast<T&>(components[pair->second][index]));
+			else
+				//return std::tuple<bool, T&>(false, 0);
 		};
 
 	private:
 		std::shared_ptr<Cluster> cluster;
-		std::vector<std::shared_ptr<IComponent>> components;
+		std::vector<std::vector<IComponent>> components;
 		std::unordered_map<std::type_index, int> componentMap; //type_index, components 벡터에 저장된 인덱스 번호
 	};
 
