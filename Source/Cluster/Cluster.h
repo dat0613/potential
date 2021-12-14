@@ -8,6 +8,7 @@
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
+#include <optional>
 
 #include <SFML/Graphics.hpp>
 
@@ -15,6 +16,7 @@ class Cluster : public std::enable_shared_from_this<Cluster>
 {
 public:
 	static constexpr int ParallelScale = 6;
+	static constexpr int DefaultAllocationSize = 10000;
 
 	// IComponent 인터페이스를 상속받는 컴포넌트들 중 같은 종류들은 모두 배열로 관리
 	// 객체가 데이터를 갖는것이 아닌, 선형적인 데이터들과 함수들로 객체를 추상화
@@ -47,9 +49,9 @@ public:
 			Component() : isActive(false), index(-1) {}
 
 			template <class T>
-			std::tuple<bool, T&> GetComponent() { return node.lock()->GetComponent<T>(GetIndex()); }// Component는 부모 Node의 컨테이너에 shared_ptr로 잡혀있기 때문에, 자신이 살아있다면 Node는 무조건 살아있음.
+			std::weak_ptr<T> GetComponent() { return node.lock()->GetComponent<T>(GetIndex()); }// Component는 부모 Node의 컨테이너에 shared_ptr로 잡혀있기 때문에, 자신이 살아있다면 Node는 무조건 살아있음.
 			template <class T>
-			std::tuple<bool, const T&> GetOtherComponent(int index) { return node.lock()->GetComponent<T>(GetIndex()); }// Component는 부모 Node의 컨테이너에 shared_ptr로 잡혀있기 때문에, 자신이 살아있다면 Node는 무조건 살아있음.
+			std::weak_ptr<T> GetOtherComponent(int index) { return node.lock()->GetComponent<T>(GetIndex(index)); }// Component는 부모 Node의 컨테이너에 shared_ptr로 잡혀있기 때문에, 자신이 살아있다면 Node는 무조건 살아있음.
 			void SetNode(const std::weak_ptr<Node>& node) override { this->node = node; };// 부모 Node와 상호 참조를 예방하기 위해 weak_ptr사용
 			void SetIndex(int index) override { this->index = index; }
 			int GetIndex() const override { return index; }
@@ -90,10 +92,10 @@ public:
 
 					for (int i = threadNumber * division + startCorrection; i < (threadNumber + 1) * division + endCorrection; i++)
 					{
-						if (!component[i].IsActive())
+						if (!component[i]->IsActive())
 							continue;
 
-						component[i].Update(deltaTime);
+						component[i]->Update(deltaTime);
 					}
 				});
 			}
@@ -107,10 +109,10 @@ public:
 
 				for (int i = 0; i < entityCount; i++)
 				{
-					if (!component[i].IsActive())
+					if (!component[i]->IsActive())
 						continue;
 
-					component[i].Draw(window);
+					component[i]->Draw(window);
 				}
 			}
 		}
@@ -135,35 +137,28 @@ public:
 			assert(componentMap.find(typeIndex) == componentMap.end());
 
 			int vectorIndex = components.size();
-			std::vector<T> entities;
-			//components.push_back(entities);
+			std::vector<std::shared_ptr<IComponent>> entities;
+			entities.reserve(DefaultAllocationSize);
+			components.push_back(entities);
 			componentMap.insert(std::make_pair(typeIndex, vectorIndex));
 			return;
 		}
 
 		template <class T>
-		std::tuple<bool, T&> GetComponent(int index)
+		std::weak_ptr<T> GetComponent(int index)
 		{
 			static_assert(std::is_base_of<IComponent, T>::value, "Component class must be derived IComponent interface");
-
-			auto retval = false;
 			auto typeIndex = std::type_index(typeid(T));
 			auto pair = componentMap.find(typeIndex);
 			if (pair == componentMap.end())
-				retval = false;
-			else
-				// index 범위 검사 필요
-				retval = components[pair->second][index].IsActive();
+				return std::weak_ptr<T>();
 
-			if (retval)
-				return std::tuple<bool, T&>(true, static_cast<T&>(components[pair->second][index]));
-			else
-				//return std::tuple<bool, T&>(false, 0);
+			return std::static_pointer_cast<T>(components[pair->second][index]);
 		};
 
 	private:
 		std::shared_ptr<Cluster> cluster;
-		std::vector<std::vector<IComponent>> components;
+		std::vector<std::vector<std::shared_ptr<IComponent>>> components;// IComponent 객체들을 선형으로 관리하기 위한 2중 vector...
 		std::unordered_map<std::type_index, int> componentMap; //type_index, components 벡터에 저장된 인덱스 번호
 	};
 

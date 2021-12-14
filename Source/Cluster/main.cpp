@@ -39,10 +39,9 @@ class GameObjectComponent : public Cluster::Node::Component
 public:
     void Update(float deltaTime) override
     {
-        auto [isSuccess, eventComponent] = GetComponent<EventComponent>();
-        if (isSuccess)
+        if (auto eventComponent = GetComponent<EventComponent>().lock())
         {
-            eventComponent.DoSomeThing();
+            eventComponent->DoSomeThing();
         }
         position.x++;
     }
