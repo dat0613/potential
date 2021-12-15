@@ -39,7 +39,16 @@ public:
 		virtual bool IsActive() const { return false; }
 	};
 
-	class Node : public std::enable_shared_from_this<Node>
+	class INode
+	{
+	public:
+		virtual void Update(float deltaTime) {}
+		virtual void Draw(sf::RenderWindow& window) {}
+		virtual void SetCluster(const std::shared_ptr<Cluster>& cluster) {}
+		virtual std::shared_ptr<Cluster> GetCluster() { return nullptr; }
+	};
+
+	class Node : public INode, public std::enable_shared_from_this<Node>
 	{
 	public:
 		
@@ -117,15 +126,21 @@ public:
 			}
 		}
 
-		std::shared_ptr<Cluster>& GetCluster()
+		std::shared_ptr<Cluster> GetCluster() override
 		{
 			return cluster;
 		}
 
-		void SetCluster(const std::shared_ptr<Cluster>& cluster)
+		void SetCluster(const std::shared_ptr<Cluster>& cluster) override
 		{
 			assert(cluster != nullptr);
 			this->cluster = cluster;
+		}
+
+		template <class T>
+		int AddObject()
+		{
+
 		}
 
 		template <class T>
@@ -156,7 +171,7 @@ public:
 			return std::static_pointer_cast<T>(components[pair->second][index]);
 		};
 
-	private:
+	protected:
 		std::shared_ptr<Cluster> cluster;
 		std::vector<std::vector<std::shared_ptr<IComponent>>> components;// IComponent 객체들을 선형으로 관리하기 위한 2중 vector...
 		std::unordered_map<std::type_index, int> componentMap; //type_index, components 벡터에 저장된 인덱스 번호
@@ -188,7 +203,7 @@ public:
 		}
 	}
 
-	void AddNode(std::shared_ptr<Node>& node)
+	void AddNode(std::shared_ptr<INode> node)
 	{
 		assert(node->GetCluster() == nullptr);
 		node->SetCluster(shared_from_this());
@@ -203,5 +218,5 @@ private:
 	}
 
 private:
-	std::vector<std::shared_ptr<Node>> nodes;
+	std::vector<std::shared_ptr<INode>> nodes;
 };

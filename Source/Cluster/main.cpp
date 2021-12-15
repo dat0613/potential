@@ -74,7 +74,7 @@ int main()
     node->AddComponent<GameObjectComponent>();
 
     auto cluster = std::make_shared<Cluster>();
-    cluster->AddNode(node);
+    cluster->AddNode(std::static_pointer_cast<Cluster::INode>(node));
 
     sf::View view(sf::FloatRect(Width * -0.5f, -Height * -0.5f, Width, Height));
 
