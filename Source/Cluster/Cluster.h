@@ -32,6 +32,7 @@ public:
 	{
 	public:
 		virtual void Update(float deltaTime) = 0;
+		virtual void Initialize(void* parameter) = 0;
 		virtual void Draw(sf::RenderWindow& window) {}
 		virtual void SetNode(const std::weak_ptr<Node>& node) {}
 		virtual void SetIndex(int index) {}
@@ -39,6 +40,13 @@ public:
 		virtual bool IsActive() const { return false; }
 	};
 
+private:
+	class IComponentWrapper
+	{
+		virtual void Push(void* parameter) = 0;
+	};
+
+public:
 	class INode
 	{
 	public:
@@ -71,6 +79,54 @@ public:
 			bool isActive;
 			int index;
 		};
+
+	private:
+
+		template <class T>
+		class ComponentWrapper : public IComponentWrapper
+		{
+		public:
+			void Push(void* parameter) override
+			{
+				auto comp = std::make_shared<T>();
+				comp.Initialize(parameter);
+				components.push_back(comp);
+			}
+
+			void GetComponent(int index) override
+			{
+				return components[index];// 인덱스 검사 필요
+			}
+
+			void Update(float deltaTime) override
+			{
+				int entityCount = components.size();
+				if (entityCount == 0)
+					continue;
+
+				int division = entityCount / ParallelScale;
+				int remainder = entityCount % ParallelScale;
+
+				concurrency::parallel_for(0, ParallelScale, [deltaTime, division, remainder, &components](int threadNumber)
+					{
+						int startCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber : remainder) : 0;
+						int endCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber + 1 : remainder) : 0;
+
+						for (int i = threadNumber * division + startCorrection; i < (threadNumber + 1) * division + endCorrection; i++)
+						{
+							if (!components[i]->IsActive())
+								continue;
+
+							components[i]->Update(deltaTime);
+						}
+					});
+
+			}
+
+		private:
+			std::vector<std::shared_ptr<T>> components;
+		};
+
 	public:
 
 		Node() : cluster(nullptr)
@@ -87,26 +143,7 @@ public:
 		{
 			for (auto& component : components)
 			{
-				int entityCount = component.size();
-				if (entityCount == 0)
-					continue;
-
-				int division = entityCount / ParallelScale;
-				int remainder = entityCount % ParallelScale;
-
-				concurrency::parallel_for(0, ParallelScale, [deltaTime, division, remainder, &component](int threadNumber)
-				{
-					int startCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber     : remainder) : 0;
-					int endCorrection   = remainder != 0 ? (remainder > threadNumber ? threadNumber + 1 : remainder) : 0;
-
-					for (int i = threadNumber * division + startCorrection; i < (threadNumber + 1) * division + endCorrection; i++)
-					{
-						if (!component[i]->IsActive())
-							continue;
-
-						component[i]->Update(deltaTime);
-					}
-				});
+				component
 			}
 		}
 
@@ -147,15 +184,13 @@ public:
 		void AddComponent()
 		{
 			static_assert(std::is_base_of<IComponent, T>::value, "Component class must be derived IComponent interface");
-
-			auto typeIndex = std::type_index(typeid(T));
 			assert(componentMap.find(typeIndex) == componentMap.end());
 
 			int vectorIndex = components.size();
 			std::vector<std::shared_ptr<IComponent>> entities;
 			entities.reserve(DefaultAllocationSize);
 			components.push_back(entities);
-			componentMap.insert(std::make_pair(typeIndex, vectorIndex));
+			componentMap.insert(std::make_pair(std::type_index(typeid(T)), vectorIndex));
 			return;
 		}
 
@@ -163,6 +198,7 @@ public:
 		std::weak_ptr<T> GetComponent(int index)
 		{
 			static_assert(std::is_base_of<IComponent, T>::value, "Component class must be derived IComponent interface");
+
 			auto typeIndex = std::type_index(typeid(T));
 			auto pair = componentMap.find(typeIndex);
 			if (pair == componentMap.end())
@@ -173,7 +209,7 @@ public:
 
 	protected:
 		std::shared_ptr<Cluster> cluster;
-		std::vector<std::vector<std::shared_ptr<IComponent>>> components;// IComponent 객체들을 선형으로 관리하기 위한 2중 vector...
+		std::vector<IComponentWrapper> componentWrappers;
 		std::unordered_map<std::type_index, int> componentMap; //type_index, components 벡터에 저장된 인덱스 번호
 	};
 
