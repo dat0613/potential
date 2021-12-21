@@ -40,12 +40,6 @@ public:
 		virtual bool IsActive() const { return false; }
 	};
 
-private:
-	class IComponentWrapper
-	{
-		virtual void Push(void* parameter) = 0;
-	};
-
 public:
 	class INode
 	{
@@ -81,6 +75,14 @@ public:
 		};
 
 	private:
+		class IComponentWrapper
+		{
+		public:
+			virtual void Push(void* parameter) = 0;
+			virtual std::shared_ptr<IComponent> GetComponent(int index) = 0;
+			virtual void Update(float deltaTime) = 0;
+			virtual void Draw(sf::RenderWindow& window) = 0;
+		};
 
 		template <class T>
 		class ComponentWrapper : public IComponentWrapper
@@ -89,38 +91,49 @@ public:
 			void Push(void* parameter) override
 			{
 				auto comp = std::make_shared<T>();
-				comp.Initialize(parameter);
+				comp->Initialize(parameter);
 				components.push_back(comp);
 			}
 
-			void GetComponent(int index) override
+			std::shared_ptr<IComponent> GetComponent(int index) override
 			{
-				return components[index];// 인덱스 검사 필요
+				return std::static_pointer_cast<IComponent>(components[index]);// 인덱스 검사 필요
 			}
 
 			void Update(float deltaTime) override
 			{
 				int entityCount = components.size();
 				if (entityCount == 0)
-					continue;
+					return;
 
 				int division = entityCount / ParallelScale;
 				int remainder = entityCount % ParallelScale;
 
-				concurrency::parallel_for(0, ParallelScale, [deltaTime, division, remainder, &components](int threadNumber)
+				concurrency::parallel_for(0, ParallelScale, [deltaTime, division, remainder, this](int threadNumber)
+				{
+					int startCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber : remainder) : 0;
+					int endCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber + 1 : remainder) : 0;
+
+					for (int i = threadNumber * division + startCorrection; i < (threadNumber + 1) * division + endCorrection; i++)
 					{
-						int startCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber : remainder) : 0;
-						int endCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber + 1 : remainder) : 0;
+						if (!components[i]->IsActive())
+							continue;
 
-						for (int i = threadNumber * division + startCorrection; i < (threadNumber + 1) * division + endCorrection; i++)
-						{
-							if (!components[i]->IsActive())
-								continue;
+						components[i]->Update(deltaTime);
+					}
+				});
 
-							components[i]->Update(deltaTime);
-						}
-					});
+			}
 
+			void Draw(sf::RenderWindow& window) override
+			{
+				for (auto& component : components)
+				{
+					if (!component->IsActive())
+						continue;
+
+					component->Draw(window);
+				}
 			}
 
 		private:
@@ -141,25 +154,17 @@ public:
 
 		void Update(float deltaTime)
 		{
-			for (auto& component : components)
+			for (auto& wrapper : componentWrappers)
 			{
-				component
+				wrapper->Update(deltaTime);
 			}
 		}
 
 		void Draw(sf::RenderWindow& window)
 		{
-			for (auto& component : components)
+			for (auto& component : componentWrappers)
 			{
-				int entityCount = component.size();
 
-				for (int i = 0; i < entityCount; i++)
-				{
-					if (!component[i]->IsActive())
-						continue;
-
-					component[i]->Draw(window);
-				}
 			}
 		}
 
@@ -184,13 +189,13 @@ public:
 		void AddComponent()
 		{
 			static_assert(std::is_base_of<IComponent, T>::value, "Component class must be derived IComponent interface");
+			auto typeIndex = std::type_index(typeid(T));
 			assert(componentMap.find(typeIndex) == componentMap.end());
 
-			int vectorIndex = components.size();
-			std::vector<std::shared_ptr<IComponent>> entities;
-			entities.reserve(DefaultAllocationSize);
-			components.push_back(entities);
-			componentMap.insert(std::make_pair(std::type_index(typeid(T)), vectorIndex));
+			int vectorIndex = componentWrappers.size();
+			auto wrapper = std::make_shared<ComponentWrapper<T>>();
+			componentWrappers.push_back(wrapper);
+			componentMap.insert(std::make_pair(typeIndex, vectorIndex));
 			return;
 		}
 
@@ -204,12 +209,12 @@ public:
 			if (pair == componentMap.end())
 				return std::weak_ptr<T>();
 
-			return std::static_pointer_cast<T>(components[pair->second][index]);
+			return std::static_pointer_cast<T>(componentWrappers[pair->second]->GetComponent(index));
 		};
 
 	protected:
 		std::shared_ptr<Cluster> cluster;
-		std::vector<IComponentWrapper> componentWrappers;
+		std::vector<std::shared_ptr<IComponentWrapper>> componentWrappers;
 		std::unordered_map<std::type_index, int> componentMap; //type_index, components 벡터에 저장된 인덱스 번호
 	};
 

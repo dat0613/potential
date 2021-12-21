@@ -32,6 +32,11 @@ public:
     {
 
     }
+    
+    void Initialize(void* parameter)
+    {
+
+    }
 };
 
 class GameObjectComponent : public Cluster::Node::Component
@@ -51,6 +56,11 @@ public:
         sf::CircleShape shape(radius);
         shape.setFillColor(sf::Color::Cyan);
         shape.setPosition(position.x - radius, position.y - radius);
+    }
+
+    void Initialize(void* parameter)
+    {
+
     }
 
 private:
