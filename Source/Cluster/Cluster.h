@@ -15,7 +15,7 @@
 class Cluster : public std::enable_shared_from_this<Cluster>
 {
 public:
-	static constexpr int ParallelScale = 6;
+	static constexpr int ParallelScale = 4;
 	static constexpr int DefaultAllocationSize = 10000;
 
 	// IComponent 인터페이스를 상속받는 컴포넌트들 중 같은 종류들은 모두 배열로 관리
@@ -38,6 +38,7 @@ public:
 		virtual void SetIndex(int index) {}
 		virtual int GetIndex() const { return -1; }
 		virtual bool IsActive() const { return false; }
+		virtual void SetActive(bool isActive) {}
 	};
 
 public:
@@ -67,6 +68,7 @@ public:
 			void SetIndex(int index) override { this->index = index; }
 			int GetIndex() const override { return index; }
 			bool IsActive() const override { return isActive; }
+			void SetActive(bool isActive) { this->isActive = isActive; }
 
 		private:
 			std::weak_ptr<Node> node;
@@ -82,6 +84,7 @@ public:
 			virtual std::shared_ptr<IComponent> GetComponent(int index) = 0;
 			virtual void Update(float deltaTime) = 0;
 			virtual void Draw(sf::RenderWindow& window) = 0;
+			virtual void SetNode(const std::weak_ptr<Node>& node) = 0;
 		};
 
 		template <class T>
@@ -91,6 +94,9 @@ public:
 			void Push(void* parameter) override
 			{
 				auto comp = std::make_shared<T>();
+				comp->SetNode(node);
+				comp->SetIndex(components.size());
+				comp->SetActive(true);
 				comp->Initialize(parameter);
 				components.push_back(comp);
 			}
@@ -111,8 +117,8 @@ public:
 
 				concurrency::parallel_for(0, ParallelScale, [deltaTime, division, remainder, this](int threadNumber)
 				{
-					int startCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber : remainder) : 0;
-					int endCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber + 1 : remainder) : 0;
+					int startCorrection = remainder != 0 ? (remainder > threadNumber ? threadNumber     : remainder) : 0;
+					int endCorrection   = remainder != 0 ? (remainder > threadNumber ? threadNumber + 1 : remainder) : 0;
 
 					for (int i = threadNumber * division + startCorrection; i < (threadNumber + 1) * division + endCorrection; i++)
 					{
@@ -136,8 +142,14 @@ public:
 				}
 			}
 
+			void SetNode(const std::weak_ptr<Node>& node)
+			{
+				this->node = node;
+			}
+
 		private:
-			std::vector<std::shared_ptr<T>> components;
+			std::vector<std::shared_ptr<T>> components;// 굳이 포인터일 필요는 없음. 나중에 변경 필요
+			std::weak_ptr<Node> node;
 		};
 
 	public:
@@ -164,7 +176,7 @@ public:
 		{
 			for (auto& component : componentWrappers)
 			{
-
+				component->Draw(window);
 			}
 		}
 
@@ -179,10 +191,12 @@ public:
 			this->cluster = cluster;
 		}
 
-		template <class T>
-		int AddObject()
+		void AddObject(void* parameter)
 		{
-
+			for (auto& wrapper : componentWrappers)
+			{
+				wrapper->Push(parameter);
+			}
 		}
 
 		template <class T>
@@ -194,6 +208,7 @@ public:
 
 			int vectorIndex = componentWrappers.size();
 			auto wrapper = std::make_shared<ComponentWrapper<T>>();
+			wrapper->SetNode(shared_from_this());
 			componentWrappers.push_back(wrapper);
 			componentMap.insert(std::make_pair(typeIndex, vectorIndex));
 			return;

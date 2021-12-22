@@ -2,6 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include "Cluster.h"
 #include <thread>
+#include <random>
 
 #if defined (_DEBUG)
 #pragma comment (lib, "sfml-window-d.lib")
@@ -20,6 +21,14 @@ constexpr int FramerateLimit = 60;
 using Vector3 = sf::Vector3<float>;
 using Vector2 = sf::Vector2<float>;
 
+class BallParameter
+{
+public:
+    float radius;
+    Vector3 position;
+    sf::Color color;
+};
+
 class EventComponent : public Cluster::Node::Component
 {
 public:
@@ -35,6 +44,8 @@ public:
     
     void Initialize(void* parameter)
     {
+        auto param = static_cast<BallParameter*>(parameter);
+
 
     }
 };
@@ -44,28 +55,34 @@ class GameObjectComponent : public Cluster::Node::Component
 public:
     void Update(float deltaTime) override
     {
-        if (auto eventComponent = GetComponent<EventComponent>().lock())
-        {
-            eventComponent->DoSomeThing();
-        }
-        position.x++;
+        //if (auto eventComponent = GetComponent<EventComponent>().lock())
+        //{
+        //    eventComponent->DoSomeThing();
+        //}
+        position.x += 100 * deltaTime;
     }
 
     void Draw(sf::RenderWindow& window) override
     {
         sf::CircleShape shape(radius);
-        shape.setFillColor(sf::Color::Cyan);
+        shape.setFillColor(color);
         shape.setPosition(position.x - radius, position.y - radius);
+        window.draw(shape);
     }
 
     void Initialize(void* parameter)
     {
+        auto param = static_cast<BallParameter*>(parameter);
 
+        this->radius = param->radius;
+        this->position = param->position;
+        this->color = param->color;
     }
 
 private:
     Vector3 position;
     float radius;
+    sf::Color color;
 };
 
 class TestComponent : public Cluster::Node::Component
@@ -79,14 +96,30 @@ public:
 
 int main()
 {
-    auto node = std::make_shared<Cluster::Node>();
-    node->AddComponent<EventComponent>();
-    node->AddComponent<GameObjectComponent>();
+    auto ballNode = std::make_shared<Cluster::Node>();
+    ballNode->AddComponent<EventComponent>();
+    ballNode->AddComponent<GameObjectComponent>();
 
     auto cluster = std::make_shared<Cluster>();
-    cluster->AddNode(std::static_pointer_cast<Cluster::INode>(node));
+    cluster->AddNode(std::static_pointer_cast<Cluster::INode>(ballNode));
 
-    sf::View view(sf::FloatRect(Width * -0.5f, -Height * -0.5f, Width, Height));
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    std::uniform_real_distribution<float> posGen(-400, 400);
+    std::uniform_real_distribution<float> radGen(5, 30);
+    std::uniform_int_distribution<int> colorGen(1, 255);
+
+    for (int i = 0; i < 10; i++)
+    {
+        BallParameter param;
+        param.radius = radGen(gen);
+        param.position = Vector3(posGen(gen), posGen(gen), 0.0f);
+        param.color = sf::Color(colorGen(gen), colorGen(gen), colorGen(gen), colorGen(gen));
+        ballNode->AddObject(&param);
+    }
+
+    sf::View view(sf::FloatRect(Width * -0.5f, Height * -0.5f, Width, Height));
 
     sf::RenderWindow window(sf::VideoMode(Width, Height), "Cluster", sf::Style::Close);
     window.setFramerateLimit(FramerateLimit);
@@ -107,9 +140,7 @@ int main()
         updateTime = std::chrono::system_clock::now();
         cluster->Update(deltaTime);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-        window.clear(sf::Color::Black);
+        window.clear(sf::Color::White);
         cluster->Draw(window);// Draw는 일단 싱글 스레드
         window.display();
     }
