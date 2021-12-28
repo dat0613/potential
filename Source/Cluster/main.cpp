@@ -29,6 +29,14 @@ public:
     sf::Color color;
 };
 
+class RectangleParameter
+{
+public:
+    Vector2 size;
+    Vector3 position;
+    sf::Color color;
+};
+
 class EventComponent : public Cluster::Node::Component
 {
 public:
@@ -50,7 +58,7 @@ public:
     }
 };
 
-class GameObjectComponent : public Cluster::Node::Component
+class BallComponent : public Cluster::Node::Component
 {
 public:
     void Update(float deltaTime) override
@@ -85,6 +93,41 @@ private:
     sf::Color color;
 };
 
+class RectangleComponent : public Cluster::Node::Component
+{
+public:
+    void Update(float deltaTime) override
+    {
+        //if (auto eventComponent = GetComponent<EventComponent>().lock())
+        //{
+        //    eventComponent->DoSomeThing();
+        //}
+        position.x += 100 * deltaTime;
+    }
+
+    void Draw(sf::RenderWindow& window) override
+    {
+        sf::RectangleShape shape(size);
+        shape.setFillColor(color);
+        shape.setPosition(position.x - size.x * 0.5f, position.y - size.y * 0.5f);
+        window.draw(shape);
+    }
+
+    void Initialize(void* parameter)
+    {
+        auto param = static_cast<RectangleParameter*>(parameter);
+
+        this->size = param->size;
+        this->position = param->position;
+        this->color = param->color;
+    }
+
+private:
+    Vector3 position;
+    Vector2 size;
+    sf::Color color;
+};
+
 class TestComponent : public Cluster::Node::Component
 {
 public:
@@ -94,14 +137,10 @@ public:
     }
 };
 
-int main()
+void CreateBallNode(std::shared_ptr<Cluster::Node>& ballNode)
 {
-    auto ballNode = std::make_shared<Cluster::Node>();
     ballNode->AddComponent<EventComponent>();
-    ballNode->AddComponent<GameObjectComponent>();
-
-    auto cluster = std::make_shared<Cluster>();
-    cluster->AddNode(std::static_pointer_cast<Cluster::INode>(ballNode));
+    ballNode->AddComponent<BallComponent>();
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -118,6 +157,41 @@ int main()
         param.color = sf::Color(colorGen(gen), colorGen(gen), colorGen(gen), colorGen(gen));
         ballNode->AddObject(&param);
     }
+}
+
+void CreateRectangleNode(std::shared_ptr<Cluster::Node>& ballNode)
+{
+    ballNode->AddComponent<EventComponent>();
+    ballNode->AddComponent<RectangleComponent>();
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    std::uniform_real_distribution<float> posGen(-400, 400);
+    std::uniform_real_distribution<float> sizeGen(5, 30);
+    std::uniform_int_distribution<int> colorGen(1, 255);
+
+    for (int i = 0; i < 10; i++)
+    {
+        RectangleParameter param;
+        param.size = Vector2(sizeGen(gen), sizeGen(gen));
+        param.position = Vector3(posGen(gen), posGen(gen), 0.0f);
+        param.color = sf::Color(colorGen(gen), colorGen(gen), colorGen(gen), colorGen(gen));
+        ballNode->AddObject(&param);
+    }
+}
+
+int main()
+{
+    auto ballNode = std::make_shared<Cluster::Node>();
+    CreateBallNode(ballNode);
+
+    auto rectNode = std::make_shared<Cluster::Node>();
+    CreateRectangleNode(rectNode);
+
+    auto cluster = std::make_shared<Cluster>();
+    cluster->AddNode(std::static_pointer_cast<Cluster::INode>(ballNode));
+    cluster->AddNode(std::static_pointer_cast<Cluster::INode>(rectNode));
 
     sf::View view(sf::FloatRect(Width * -0.5f, Height * -0.5f, Width, Height));
 
