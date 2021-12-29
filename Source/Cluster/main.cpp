@@ -18,9 +18,6 @@ constexpr int Width = 800;
 constexpr int Height = 800;
 constexpr int FramerateLimit = 60;
 
-using Vector3 = sf::Vector3<float>;
-using Vector2 = sf::Vector2<float>;
-
 class BallParameter
 {
 public:
@@ -72,8 +69,6 @@ public:
 
     void Draw(sf::RenderWindow& window) override
     {
-        sf::CircleShape shape(radius);
-        shape.setFillColor(color);
         shape.setPosition(position.x - radius, position.y - radius);
         window.draw(shape);
     }
@@ -85,9 +80,13 @@ public:
         this->radius = param->radius;
         this->position = param->position;
         this->color = param->color;
+
+        shape.setRadius(radius);
+        shape.setFillColor(color);
     }
 
 private:
+    sf::CircleShape shape;
     Vector3 position;
     float radius;
     sf::Color color;
@@ -107,8 +106,6 @@ public:
 
     void Draw(sf::RenderWindow& window) override
     {
-        sf::RectangleShape shape(size);
-        shape.setFillColor(color);
         shape.setPosition(position.x - size.x * 0.5f, position.y - size.y * 0.5f);
         window.draw(shape);
     }
@@ -120,9 +117,13 @@ public:
         this->size = param->size;
         this->position = param->position;
         this->color = param->color;
+
+        shape.setSize(param->size);
+        shape.setFillColor(color);
     }
 
 private:
+    sf::RectangleShape shape;
     Vector3 position;
     Vector2 size;
     sf::Color color;

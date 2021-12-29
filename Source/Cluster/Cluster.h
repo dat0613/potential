@@ -12,6 +12,9 @@
 
 #include <SFML/Graphics.hpp>
 
+using Vector3 = sf::Vector3<float>;
+using Vector2 = sf::Vector2<float>;
+
 class Cluster : public std::enable_shared_from_this<Cluster>
 {
 public:
@@ -74,6 +77,46 @@ public:
 			std::weak_ptr<Node> node;
 			bool isActive;
 			int index;
+		};
+
+		class Transform : public Component
+		{
+		public:
+			sf::Transform transform;
+		};
+
+		class BoxCollider : public Component
+		{
+		public:
+			BoxCollider() : rect(sf::Vector2(1.0f, 1.0f)) {}
+			sf::RectangleShape rect;
+
+		private:
+			std::weak_ptr<Transform> transform;
+		public:
+
+			void Update(float deltaTime) override
+			{
+
+			}
+
+			void Initialize(void* parameter) override
+			{
+				transform = GetComponent<Transform>();
+			}
+
+			void Prepare()
+			{
+				if (auto tr = transform.lock())
+				{
+
+				}
+			}
+
+			static bool IsCollision(const BoxCollider& collider1, const BoxCollider& collider2)
+			{
+				return collider1.rect.getGlobalBounds().intersects(collider2.rect.getGlobalBounds());
+			}
 		};
 
 	private:
