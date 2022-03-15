@@ -1,15 +1,10 @@
 ﻿#include <iostream>
 #include "flatbuffers/SchemaTest_generated.h"
-#include <unicode/ustring.h>
-#include <unicode/unistr.h>
 #include <utility>
 #include <Windows.h>
 
-int main()
+void MonseterTest()
 {
-	SetConsoleOutputCP(CP_UTF8);
-	setlocale(LC_ALL, "en_US.UTF-8");
-
 	flatbuffers::FlatBufferBuilder builder;
 	MyGame::Vec3 vec3{ 123.456f, 789.123f, 456.789f };
 	std::vector<unsigned char> vector{ 12, 34, 56, 78, 90 };
@@ -22,8 +17,8 @@ int main()
 	auto monsterPtr = builder.GetBufferPointer();
 	auto monsterPtrSize = builder.GetSize();
 
-	auto monster2 = MyGame::GetMonster(monsterPtr);
-	
+	auto monster2 = flatbuffers::GetRoot<MyGame::Monster>(monsterPtr);
+
 	std::cout << "pos : { " << monster2->pos()->x() << ", " << monster2->pos()->y() << ", " << monster2->pos()->z() << " }" << std::endl;
 	std::cout << "mana : " << monster2->mana() << std::endl;
 	std::cout << "hp : " << monster2->hp() << std::endl;
@@ -36,30 +31,37 @@ int main()
 	std::cout << std::endl;
 
 	std::cout << "color : " << (int)monster2->color() << std::endl;
+}
 
+void ProtocolTest()
+{
+	flatbuffers::FlatBufferBuilder builder;
+	auto requestString = builder.CreateString("ThisIsRequestString!!!!");
+	auto body = MyGame::CreateRequestSomeThing(builder, requestString);
+	auto protocol = MyGame::CreateProtocol(builder, MyGame::Message::Message_RequestSomeThing, body.Union());
+	builder.Finish(protocol);
 
+	auto ptr = builder.GetBufferPointer();
 
-	std::u8string u8string = u8"اللغة العربية 한국어 日本語 妈妈, 我们不能养一只波斯猫吗 คุณด้วยนะคะ Монгол хэл русский français";
-	std::string string = reinterpret_cast<const char*>(u8"اللغة العربية 한국어 日本語 妈妈, 我们不能养一只波斯猫吗 คุณด้วยนะคะ Монгол хэл русский français");
+	auto protocol2 = flatbuffers::GetRoot<MyGame::Protocol>(ptr);
 
-	std::cout << sizeof(char8_t) << std::endl;;
-	std::cout << sizeof(char) << std::endl;;
-
-
-	auto u8stringBuffer = u8string.c_str();
-	auto stringBuffer = string.c_str();
-	std::cout << reinterpret_cast<const char*>(u8string.c_str()) << std::endl;
-	for (int i = 0; i < u8string.length(); i++)
+	switch (protocol2->body_type())
 	{
-		std::cout << static_cast<int>(u8stringBuffer[i]) << std::endl;
-	}
+	case MyGame::Message::Message_RequestSomeThing:
 
-	std::cout << std::endl;
-	std::cout << "-------------------------------------------------------------------------------" << std::endl;
-	std::cout << std::endl;
+		break;
 
-	for (int i = 0; i < string.length(); i++)
-	{
-		std::cout << static_cast<int>(static_cast<unsigned char>(stringBuffer[i])) << std::endl;
+	case MyGame::Message::Message_ResponseSomThing:
+
+		break;
 	}
+}
+
+int main()
+{
+	SetConsoleOutputCP(CP_UTF8);
+	setlocale(LC_ALL, "en_US.UTF-8");
+
+	//MonseterTest();
+	ProtocolTest();
 }
