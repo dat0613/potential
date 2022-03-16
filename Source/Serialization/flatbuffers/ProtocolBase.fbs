@@ -1,0 +1,17 @@
+﻿include "AServerProtocol.fbs";
+include "BServerProtocol.fbs";
+
+namespace Protocol;
+
+union Message {
+  RequestSomeThing,
+  ResponseSomThing,
+  RequestAttack,
+  ResponseAttack
+}
+
+table Protocol {
+  body:Message;
+}
+
+root_type Protocol;

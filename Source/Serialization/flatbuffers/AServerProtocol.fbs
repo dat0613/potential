@@ -1,0 +1,11 @@
+﻿namespace Protocol;
+
+table RequestSomeThing {
+  request_string:string;
+}
+
+table ResponseSomThing {
+  response_stringd:string;
+}
+
+file_identifier "ASPT";

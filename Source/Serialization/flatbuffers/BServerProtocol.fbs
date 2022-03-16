@@ -1,0 +1,11 @@
+﻿namespace Protocol;
+
+table RequestAttack {
+  request_string:string;
+}
+
+table ResponseAttack {
+  response_stringd:string;
+}
+
+file_identifier "BSPT";
