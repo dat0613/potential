@@ -13,15 +13,6 @@ struct Vec3;
 struct Monster;
 struct MonsterBuilder;
 
-struct RequestSomeThing;
-struct RequestSomeThingBuilder;
-
-struct ResponseSomThing;
-struct ResponseSomThingBuilder;
-
-struct Protocol;
-struct ProtocolBuilder;
-
 enum Color : int8_t {
   Color_Red = 1,
   Color_Green = 2,
@@ -54,54 +45,6 @@ inline const char *EnumNameColor(Color e) {
   const size_t index = static_cast<size_t>(e) - static_cast<size_t>(Color_Red);
   return EnumNamesColor()[index];
 }
-
-enum Message : uint8_t {
-  Message_NONE = 0,
-  Message_RequestSomeThing = 1,
-  Message_ResponseSomThing = 2,
-  Message_MIN = Message_NONE,
-  Message_MAX = Message_ResponseSomThing
-};
-
-inline const Message (&EnumValuesMessage())[3] {
-  static const Message values[] = {
-    Message_NONE,
-    Message_RequestSomeThing,
-    Message_ResponseSomThing
-  };
-  return values;
-}
-
-inline const char * const *EnumNamesMessage() {
-  static const char * const names[4] = {
-    "NONE",
-    "RequestSomeThing",
-    "ResponseSomThing",
-    nullptr
-  };
-  return names;
-}
-
-inline const char *EnumNameMessage(Message e) {
-  if (flatbuffers::IsOutRange(e, Message_NONE, Message_ResponseSomThing)) return "";
-  const size_t index = static_cast<size_t>(e);
-  return EnumNamesMessage()[index];
-}
-
-template<typename T> struct MessageTraits {
-  static const Message enum_value = Message_NONE;
-};
-
-template<> struct MessageTraits<MyGame::RequestSomeThing> {
-  static const Message enum_value = Message_RequestSomeThing;
-};
-
-template<> struct MessageTraits<MyGame::ResponseSomThing> {
-  static const Message enum_value = Message_ResponseSomThing;
-};
-
-bool VerifyMessage(flatbuffers::Verifier &verifier, const void *obj, Message type);
-bool VerifyMessageVector(flatbuffers::Verifier &verifier, const flatbuffers::Vector<flatbuffers::Offset<void>> *values, const flatbuffers::Vector<uint8_t> *types);
 
 FLATBUFFERS_MANUALLY_ALIGNED_STRUCT(4) Vec3 FLATBUFFERS_FINAL_CLASS {
  private:
@@ -245,241 +188,43 @@ inline flatbuffers::Offset<Monster> CreateMonsterDirect(
       color);
 }
 
-struct RequestSomeThing FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
-  typedef RequestSomeThingBuilder Builder;
-  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_REQUESTSTRING = 4
-  };
-  const flatbuffers::String *RequestString() const {
-    return GetPointer<const flatbuffers::String *>(VT_REQUESTSTRING);
-  }
-  bool Verify(flatbuffers::Verifier &verifier) const {
-    return VerifyTableStart(verifier) &&
-           VerifyOffset(verifier, VT_REQUESTSTRING) &&
-           verifier.VerifyString(RequestString()) &&
-           verifier.EndTable();
-  }
-};
-
-struct RequestSomeThingBuilder {
-  typedef RequestSomeThing Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_RequestString(flatbuffers::Offset<flatbuffers::String> RequestString) {
-    fbb_.AddOffset(RequestSomeThing::VT_REQUESTSTRING, RequestString);
-  }
-  explicit RequestSomeThingBuilder(flatbuffers::FlatBufferBuilder &_fbb)
-        : fbb_(_fbb) {
-    start_ = fbb_.StartTable();
-  }
-  flatbuffers::Offset<RequestSomeThing> Finish() {
-    const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<RequestSomeThing>(end);
-    return o;
-  }
-};
-
-inline flatbuffers::Offset<RequestSomeThing> CreateRequestSomeThing(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::String> RequestString = 0) {
-  RequestSomeThingBuilder builder_(_fbb);
-  builder_.add_RequestString(RequestString);
-  return builder_.Finish();
+inline const MyGame::Monster *GetMonster(const void *buf) {
+  return flatbuffers::GetRoot<MyGame::Monster>(buf);
 }
 
-inline flatbuffers::Offset<RequestSomeThing> CreateRequestSomeThingDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    const char *RequestString = nullptr) {
-  auto RequestString__ = RequestString ? _fbb.CreateString(RequestString) : 0;
-  return MyGame::CreateRequestSomeThing(
-      _fbb,
-      RequestString__);
+inline const MyGame::Monster *GetSizePrefixedMonster(const void *buf) {
+  return flatbuffers::GetSizePrefixedRoot<MyGame::Monster>(buf);
 }
 
-struct ResponseSomThing FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
-  typedef ResponseSomThingBuilder Builder;
-  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_RESPONSESTRING = 4
-  };
-  const flatbuffers::String *ResponseString() const {
-    return GetPointer<const flatbuffers::String *>(VT_RESPONSESTRING);
-  }
-  bool Verify(flatbuffers::Verifier &verifier) const {
-    return VerifyTableStart(verifier) &&
-           VerifyOffset(verifier, VT_RESPONSESTRING) &&
-           verifier.VerifyString(ResponseString()) &&
-           verifier.EndTable();
-  }
-};
-
-struct ResponseSomThingBuilder {
-  typedef ResponseSomThing Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_ResponseString(flatbuffers::Offset<flatbuffers::String> ResponseString) {
-    fbb_.AddOffset(ResponseSomThing::VT_RESPONSESTRING, ResponseString);
-  }
-  explicit ResponseSomThingBuilder(flatbuffers::FlatBufferBuilder &_fbb)
-        : fbb_(_fbb) {
-    start_ = fbb_.StartTable();
-  }
-  flatbuffers::Offset<ResponseSomThing> Finish() {
-    const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<ResponseSomThing>(end);
-    return o;
-  }
-};
-
-inline flatbuffers::Offset<ResponseSomThing> CreateResponseSomThing(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::String> ResponseString = 0) {
-  ResponseSomThingBuilder builder_(_fbb);
-  builder_.add_ResponseString(ResponseString);
-  return builder_.Finish();
-}
-
-inline flatbuffers::Offset<ResponseSomThing> CreateResponseSomThingDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    const char *ResponseString = nullptr) {
-  auto ResponseString__ = ResponseString ? _fbb.CreateString(ResponseString) : 0;
-  return MyGame::CreateResponseSomThing(
-      _fbb,
-      ResponseString__);
-}
-
-struct Protocol FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
-  typedef ProtocolBuilder Builder;
-  enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_BODY_TYPE = 4,
-    VT_BODY = 6
-  };
-  MyGame::Message body_type() const {
-    return static_cast<MyGame::Message>(GetField<uint8_t>(VT_BODY_TYPE, 0));
-  }
-  const void *body() const {
-    return GetPointer<const void *>(VT_BODY);
-  }
-  template<typename T> const T *body_as() const;
-  const MyGame::RequestSomeThing *body_as_RequestSomeThing() const {
-    return body_type() == MyGame::Message_RequestSomeThing ? static_cast<const MyGame::RequestSomeThing *>(body()) : nullptr;
-  }
-  const MyGame::ResponseSomThing *body_as_ResponseSomThing() const {
-    return body_type() == MyGame::Message_ResponseSomThing ? static_cast<const MyGame::ResponseSomThing *>(body()) : nullptr;
-  }
-  bool Verify(flatbuffers::Verifier &verifier) const {
-    return VerifyTableStart(verifier) &&
-           VerifyField<uint8_t>(verifier, VT_BODY_TYPE) &&
-           VerifyOffset(verifier, VT_BODY) &&
-           VerifyMessage(verifier, body(), body_type()) &&
-           verifier.EndTable();
-  }
-};
-
-template<> inline const MyGame::RequestSomeThing *Protocol::body_as<MyGame::RequestSomeThing>() const {
-  return body_as_RequestSomeThing();
-}
-
-template<> inline const MyGame::ResponseSomThing *Protocol::body_as<MyGame::ResponseSomThing>() const {
-  return body_as_ResponseSomThing();
-}
-
-struct ProtocolBuilder {
-  typedef Protocol Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_body_type(MyGame::Message body_type) {
-    fbb_.AddElement<uint8_t>(Protocol::VT_BODY_TYPE, static_cast<uint8_t>(body_type), 0);
-  }
-  void add_body(flatbuffers::Offset<void> body) {
-    fbb_.AddOffset(Protocol::VT_BODY, body);
-  }
-  explicit ProtocolBuilder(flatbuffers::FlatBufferBuilder &_fbb)
-        : fbb_(_fbb) {
-    start_ = fbb_.StartTable();
-  }
-  flatbuffers::Offset<Protocol> Finish() {
-    const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<Protocol>(end);
-    return o;
-  }
-};
-
-inline flatbuffers::Offset<Protocol> CreateProtocol(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    MyGame::Message body_type = MyGame::Message_NONE,
-    flatbuffers::Offset<void> body = 0) {
-  ProtocolBuilder builder_(_fbb);
-  builder_.add_body(body);
-  builder_.add_body_type(body_type);
-  return builder_.Finish();
-}
-
-inline bool VerifyMessage(flatbuffers::Verifier &verifier, const void *obj, Message type) {
-  switch (type) {
-    case Message_NONE: {
-      return true;
-    }
-    case Message_RequestSomeThing: {
-      auto ptr = reinterpret_cast<const MyGame::RequestSomeThing *>(obj);
-      return verifier.VerifyTable(ptr);
-    }
-    case Message_ResponseSomThing: {
-      auto ptr = reinterpret_cast<const MyGame::ResponseSomThing *>(obj);
-      return verifier.VerifyTable(ptr);
-    }
-    default: return true;
-  }
-}
-
-inline bool VerifyMessageVector(flatbuffers::Verifier &verifier, const flatbuffers::Vector<flatbuffers::Offset<void>> *values, const flatbuffers::Vector<uint8_t> *types) {
-  if (!values || !types) return !values && !types;
-  if (values->size() != types->size()) return false;
-  for (flatbuffers::uoffset_t i = 0; i < values->size(); ++i) {
-    if (!VerifyMessage(
-        verifier,  values->Get(i), types->GetEnum<Message>(i))) {
-      return false;
-    }
-  }
-  return true;
-}
-
-inline const MyGame::Protocol *GetProtocol(const void *buf) {
-  return flatbuffers::GetRoot<MyGame::Protocol>(buf);
-}
-
-inline const MyGame::Protocol *GetSizePrefixedProtocol(const void *buf) {
-  return flatbuffers::GetSizePrefixedRoot<MyGame::Protocol>(buf);
-}
-
-inline const char *ProtocolIdentifier() {
+inline const char *MonsterIdentifier() {
   return "PTTT";
 }
 
-inline bool ProtocolBufferHasIdentifier(const void *buf) {
+inline bool MonsterBufferHasIdentifier(const void *buf) {
   return flatbuffers::BufferHasIdentifier(
-      buf, ProtocolIdentifier());
+      buf, MonsterIdentifier());
 }
 
-inline bool VerifyProtocolBuffer(
+inline bool VerifyMonsterBuffer(
     flatbuffers::Verifier &verifier) {
-  return verifier.VerifyBuffer<MyGame::Protocol>(ProtocolIdentifier());
+  return verifier.VerifyBuffer<MyGame::Monster>(MonsterIdentifier());
 }
 
-inline bool VerifySizePrefixedProtocolBuffer(
+inline bool VerifySizePrefixedMonsterBuffer(
     flatbuffers::Verifier &verifier) {
-  return verifier.VerifySizePrefixedBuffer<MyGame::Protocol>(ProtocolIdentifier());
+  return verifier.VerifySizePrefixedBuffer<MyGame::Monster>(MonsterIdentifier());
 }
 
-inline void FinishProtocolBuffer(
+inline void FinishMonsterBuffer(
     flatbuffers::FlatBufferBuilder &fbb,
-    flatbuffers::Offset<MyGame::Protocol> root) {
-  fbb.Finish(root, ProtocolIdentifier());
+    flatbuffers::Offset<MyGame::Monster> root) {
+  fbb.Finish(root, MonsterIdentifier());
 }
 
-inline void FinishSizePrefixedProtocolBuffer(
+inline void FinishSizePrefixedMonsterBuffer(
     flatbuffers::FlatBufferBuilder &fbb,
-    flatbuffers::Offset<MyGame::Protocol> root) {
-  fbb.FinishSizePrefixed(root, ProtocolIdentifier());
+    flatbuffers::Offset<MyGame::Monster> root) {
+  fbb.FinishSizePrefixed(root, MonsterIdentifier());
 }
 
 }  // namespace MyGame

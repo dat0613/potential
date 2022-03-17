@@ -26,9 +26,27 @@
     <None Include="flatbuffers\SchemaTest.fbs">
       <Filter>소스 파일\flatbuffers</Filter>
     </None>
+    <None Include="flatbuffers\AServerProtocol.fbs">
+      <Filter>소스 파일\flatbuffers</Filter>
+    </None>
+    <None Include="flatbuffers\BServerProtocol.fbs">
+      <Filter>소스 파일\flatbuffers</Filter>
+    </None>
+    <None Include="flatbuffers\ProtocolBase.fbs">
+      <Filter>소스 파일\flatbuffers</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="flatbuffers\SchemaTest_generated.h">
+      <Filter>소스 파일\flatbuffers</Filter>
+    </ClInclude>
+    <ClInclude Include="flatbuffers\AServerProtocol_generated.h">
+      <Filter>소스 파일\flatbuffers</Filter>
+    </ClInclude>
+    <ClInclude Include="flatbuffers\BServerProtocol_generated.h">
+      <Filter>소스 파일\flatbuffers</Filter>
+    </ClInclude>
+    <ClInclude Include="flatbuffers\ProtocolBase_generated.h">
       <Filter>소스 파일\flatbuffers</Filter>
     </ClInclude>
   </ItemGroup>

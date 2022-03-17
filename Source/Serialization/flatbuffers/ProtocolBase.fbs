@@ -3,15 +3,15 @@ include "BServerProtocol.fbs";
 
 namespace Protocol;
 
-union Message {
+union MessageType {
   RequestSomeThing,
   ResponseSomThing,
   RequestAttack,
   ResponseAttack
 }
 
-table Protocol {
-  body:Message;
+table Message {
+  body:MessageType;
 }
 
-root_type Protocol;
+root_type Message;

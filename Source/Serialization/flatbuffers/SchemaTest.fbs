@@ -20,22 +20,5 @@ table Monster {
   color:Color = Blue;
 }
 
-table RequestSomeThing {
-  RequestString:string;
-}
-
-table ResponseSomThing {
-  ResponseString:string;
-}
-
-union Message {
-  RequestSomeThing,
-  ResponseSomThing
-}
-
-table Protocol {
-  body:Message;
-}
-
-root_type Protocol;
+root_type Monster;
 file_identifier "PTTT";

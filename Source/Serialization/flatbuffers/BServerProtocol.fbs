@@ -5,7 +5,7 @@ table RequestAttack {
 }
 
 table ResponseAttack {
-  response_stringd:string;
+  response_string:string;
 }
 
 file_identifier "BSPT";

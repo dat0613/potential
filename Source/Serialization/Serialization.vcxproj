@@ -151,9 +151,15 @@
     <ClCompile Include="Serialization.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="flatbuffers\AServerProtocol.fbs" />
+    <None Include="flatbuffers\BServerProtocol.fbs" />
+    <None Include="flatbuffers\ProtocolBase.fbs" />
     <None Include="flatbuffers\SchemaTest.fbs" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="flatbuffers\AServerProtocol_generated.h" />
+    <ClInclude Include="flatbuffers\BServerProtocol_generated.h" />
+    <ClInclude Include="flatbuffers\ProtocolBase_generated.h" />
     <ClInclude Include="flatbuffers\SchemaTest_generated.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

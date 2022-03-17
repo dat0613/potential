@@ -68,15 +68,15 @@ inline flatbuffers::Offset<RequestAttack> CreateRequestAttackDirect(
 struct ResponseAttack FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   typedef ResponseAttackBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_RESPONSE_STRINGD = 4
+    VT_RESPONSE_STRING = 4
   };
-  const flatbuffers::String *response_stringd() const {
-    return GetPointer<const flatbuffers::String *>(VT_RESPONSE_STRINGD);
+  const flatbuffers::String *response_string() const {
+    return GetPointer<const flatbuffers::String *>(VT_RESPONSE_STRING);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
-           VerifyOffset(verifier, VT_RESPONSE_STRINGD) &&
-           verifier.VerifyString(response_stringd()) &&
+           VerifyOffset(verifier, VT_RESPONSE_STRING) &&
+           verifier.VerifyString(response_string()) &&
            verifier.EndTable();
   }
 };
@@ -85,8 +85,8 @@ struct ResponseAttackBuilder {
   typedef ResponseAttack Table;
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
-  void add_response_stringd(flatbuffers::Offset<flatbuffers::String> response_stringd) {
-    fbb_.AddOffset(ResponseAttack::VT_RESPONSE_STRINGD, response_stringd);
+  void add_response_string(flatbuffers::Offset<flatbuffers::String> response_string) {
+    fbb_.AddOffset(ResponseAttack::VT_RESPONSE_STRING, response_string);
   }
   explicit ResponseAttackBuilder(flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
@@ -101,19 +101,19 @@ struct ResponseAttackBuilder {
 
 inline flatbuffers::Offset<ResponseAttack> CreateResponseAttack(
     flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::String> response_stringd = 0) {
+    flatbuffers::Offset<flatbuffers::String> response_string = 0) {
   ResponseAttackBuilder builder_(_fbb);
-  builder_.add_response_stringd(response_stringd);
+  builder_.add_response_string(response_string);
   return builder_.Finish();
 }
 
 inline flatbuffers::Offset<ResponseAttack> CreateResponseAttackDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
-    const char *response_stringd = nullptr) {
-  auto response_stringd__ = response_stringd ? _fbb.CreateString(response_stringd) : 0;
+    const char *response_string = nullptr) {
+  auto response_string__ = response_string ? _fbb.CreateString(response_string) : 0;
   return Protocol::CreateResponseAttack(
       _fbb,
-      response_stringd__);
+      response_string__);
 }
 
 }  // namespace Protocol

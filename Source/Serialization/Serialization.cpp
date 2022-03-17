@@ -1,5 +1,6 @@
 ﻿#include <iostream>
 #include "flatbuffers/SchemaTest_generated.h"
+#include "flatbuffers/ProtocolBase_generated.h"
 #include <utility>
 #include <Windows.h>
 
@@ -37,22 +38,30 @@ void ProtocolTest()
 {
 	flatbuffers::FlatBufferBuilder builder;
 	auto requestString = builder.CreateString("ThisIsRequestString!!!!");
-	auto body = MyGame::CreateRequestSomeThing(builder, requestString);
-	auto protocol = MyGame::CreateProtocol(builder, MyGame::Message::Message_RequestSomeThing, body.Union());
+	auto body = Protocol::CreateRequestAttack(builder, requestString);
+	auto protocol = Protocol::CreateMessage(builder, Protocol::MessageType::MessageType_RequestAttack, body.Union());
 	builder.Finish(protocol);
 
 	auto ptr = builder.GetBufferPointer();
 
-	auto protocol2 = flatbuffers::GetRoot<MyGame::Protocol>(ptr);
+	auto protocol2 = flatbuffers::GetRoot<Protocol::Message>(ptr);
 
 	switch (protocol2->body_type())
 	{
-	case MyGame::Message::Message_RequestSomeThing:
-
+	case Protocol::MessageType::MessageType_RequestSomeThing:
+		std::cout << "MessageType_RequestSomeThing : " << protocol2->body_as_RequestSomeThing()->request_string()->c_str() << std::endl;;
 		break;
 
-	case MyGame::Message::Message_ResponseSomThing:
+	case Protocol::MessageType::MessageType_ResponseSomThing:
+		std::cout << "MessageType_ResponseSomThing : " << protocol2->body_as_ResponseSomThing()->response_string()->c_str() << std::endl;;
+		break;
 
+	case Protocol::MessageType::MessageType_RequestAttack:
+		std::cout << "MessageType_RequestAttack : " << protocol2->body_as_RequestAttack()->request_string()->c_str() << std::endl;;
+		break;
+
+	case Protocol::MessageType::MessageType_ResponseAttack:
+		std::cout << "MessageType_ResponseAttack : " << protocol2->body_as_ResponseAttack()->response_string()->c_str() << std::endl;;
 		break;
 	}
 }
